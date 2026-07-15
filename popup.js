@@ -1,5 +1,7 @@
 var currentPost = null;
 var generatedText = '';
+var allImages = [];
+var imgIndex = 0;
 
 function showStatus(msg, isError) {
   var el = document.getElementById('status');
@@ -13,6 +15,47 @@ function escHtml(s) {
 
 function escAttr(s) {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function updateImgNav() {
+  var nav = document.getElementById('imgNav');
+  var thumb = document.getElementById('imgThumb');
+  var prev = document.getElementById('imgPrev');
+  var next = document.getElementById('imgNext');
+  var counter = document.getElementById('imgCounter');
+
+  if (allImages.length > 1) {
+    nav.style.display = 'block';
+    thumb.src = allImages[imgIndex];
+    thumb.onerror = function() { this.style.display = 'none'; };
+    thumb.style.display = 'block';
+    prev.style.display = imgIndex > 0 ? 'block' : 'none';
+    next.style.display = imgIndex < allImages.length - 1 ? 'block' : 'none';
+    counter.style.display = 'block';
+    counter.textContent = (imgIndex + 1) + ' / ' + allImages.length;
+    currentPost.img = allImages[imgIndex];
+    currentPost.imgDataUrl = '';
+    downloadCurrentImg();
+  } else if (allImages.length === 1) {
+    nav.style.display = 'block';
+    thumb.src = allImages[0];
+    thumb.style.display = 'block';
+    prev.style.display = 'none';
+    next.style.display = 'none';
+    counter.style.display = 'none';
+  } else {
+    nav.style.display = 'none';
+  }
+}
+
+function downloadCurrentImg() {
+  if (!currentPost || !currentPost.img) return;
+  showStatus('Baixando imagem...');
+  chrome.runtime.sendMessage({ action: 'fetchImage', url: currentPost.img }, function(res) {
+    if (res && res.dataUrl) {
+      currentPost.imgDataUrl = res.dataUrl;
+    }
+  });
 }
 
 function extractPost() {
@@ -36,14 +79,12 @@ function extractPost() {
           return;
         }
         currentPost = response;
+        allImages = response.allImages || (response.img ? [response.img] : []);
+        imgIndex = 0;
         showPost(response);
-        if (response.img) {
-          showStatus('Baixando imagem...');
-          chrome.runtime.sendMessage({ action: 'fetchImage', url: response.img }, function(res) {
-            if (res && res.dataUrl) {
-              currentPost.imgDataUrl = res.dataUrl;
-            }
-          });
+        if (allImages.length > 0) {
+          updateImgNav();
+          downloadCurrentImg();
         }
       });
     });
@@ -51,18 +92,20 @@ function extractPost() {
 }
 
 function showPost(data) {
+  var card = document.getElementById('postCard');
+  var nav = document.getElementById('imgNav');
+  card.innerHTML = '';
+  card.appendChild(nav);
+
   var html = '<div class="post-info">';
-  if (data.img) {
-    html += '<img class="post-thumb" src="' + escAttr(data.img) + '" onerror="this.style.display=\'none\'">';
-  }
   if (data.title) {
     html += '<div class="post-title">' + escHtml(data.title) + '</div>';
   }
   html += '<div class="post-url">' + escHtml(data.link) + '</div>';
   html += '</div>';
 
-  document.getElementById('postCard').innerHTML = html;
-  document.getElementById('postCard').style.display = 'block';
+  card.insertAdjacentHTML('beforeend', html);
+  card.style.display = 'block';
   document.getElementById('generateBtn').style.display = 'block';
   document.getElementById('generateBtn').disabled = false;
   showStatus('Postagem extraida. Clique para gerar story.');
@@ -103,8 +146,8 @@ function doGenerate() {
       var img = new Image();
       img.onload = function() {
         try {
-          drawImageOnCanvas(ctx, img, storyWidth, storyHeight, padding);
-          drawTitle(ctx, currentPost, storyWidth, storyHeight, padding);
+          var imgDims = drawImageOnCanvas(ctx, img, storyWidth, storyHeight, padding);
+          drawTitle(ctx, currentPost, storyWidth, storyHeight, padding, imgDims);
           drawQR(ctx, currentPost, storyWidth, storyHeight, padding);
           drawButtonSpace(ctx, currentPost, storyWidth, storyHeight, padding);
           finishStory(preview, generateBtn);
@@ -138,19 +181,15 @@ function doGenerate() {
 }
 
 function drawImageOnCanvas(ctx, img, w, h, pad) {
-  var maxW = w - pad * 2;
-  var maxH = h * 0.40;
   var imgW = img.naturalWidth || img.width;
   var imgH = img.naturalHeight || img.height;
-  var isLandscape = imgW > imgH;
-  var maxImgW = isLandscape ? maxW : maxW * 0.8;
-  var maxImgH = isLandscape ? maxH * 0.7 : maxH;
-  var scale = Math.min(maxImgW / imgW, maxImgH / imgH);
-  if (scale < 1) scale = 1;
+  var maxW = w * 0.9;
+  var maxH = h * 0.45;
+  var scale = Math.min(maxW / imgW, maxH / imgH, 1);
   imgW *= scale;
   imgH *= scale;
   var imgX = (w - imgW) / 2;
-  var imgY = pad;
+  var imgY = pad + (maxH - imgH) / 2;
 
   ctx.shadowColor = 'rgba(0,0,0,0.5)';
   ctx.shadowBlur = 30;
@@ -160,11 +199,12 @@ function drawImageOnCanvas(ctx, img, w, h, pad) {
   ctx.fill();
   ctx.shadowColor = 'transparent';
   ctx.drawImage(img, imgX, imgY, imgW, imgH);
+  return { w: imgW, h: imgH };
 }
 
-function drawTitle(ctx, post, w, h, pad) {
-  var imgH = h * 0.40;
-  var textY = pad + imgH + 80;
+function drawTitle(ctx, post, w, h, pad, imgDims) {
+  var imgH = imgDims ? imgDims.h : h * 0.45;
+  var textY = pad + imgH + 60;
 
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 48px Arial, sans-serif';
@@ -293,6 +333,12 @@ document.getElementById('copyBtn').addEventListener('click', function() {
   navigator.clipboard.writeText(generatedText).then(function() {
     showStatus('Texto copiado!');
   });
+});
+document.getElementById('imgPrev').addEventListener('click', function() {
+  if (imgIndex > 0) { imgIndex--; updateImgNav(); }
+});
+document.getElementById('imgNext').addEventListener('click', function() {
+  if (imgIndex < allImages.length - 1) { imgIndex++; updateImgNav(); }
 });
 
 extractPost();

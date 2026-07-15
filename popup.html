@@ -20,9 +20,19 @@
       padding: 12px; margin-top: 10px;
     }
     .post-info { display: flex; flex-direction: column; gap: 8px; }
-    .post-thumb {
-      width: 100%; max-height: 120px; object-fit: contain;
-      border-radius: 6px; background: #fff;
+    .img-nav { display: none; position: relative; }
+    .img-nav .post-thumb { width: 100%; max-height: 120px; object-fit: contain; border-radius: 6px; background: #fff; }
+    .img-nav-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(0,0,0,0.6); color: #fff; border: none;
+      width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+      font-size: 16px; font-weight: 700; display: none; z-index: 2;
+    }
+    .img-nav-arrow:hover { background: rgba(124,58,237,0.8); }
+    .img-nav-arrow.left { left: 4px; }
+    .img-nav-arrow.right { right: 4px; }
+    .img-nav-counter {
+      text-align: center; font-size: 10px; color: #888; margin-top: 4px; display: none;
     }
     .post-title {
       font-size: 12px; line-height: 1.3; color: #ccc;
@@ -46,7 +56,14 @@
 <body>
   <h1>Share Any Post</h1>
   <p class="subtitle">Compartilhe qualquer postagem</p>
-  <div id="postCard"></div>
+  <div id="postCard">
+    <div class="img-nav" id="imgNav">
+      <button class="img-nav-arrow left" id="imgPrev">&#8249;</button>
+      <button class="img-nav-arrow right" id="imgNext">&#8250;</button>
+      <img class="post-thumb" id="imgThumb">
+      <div class="img-nav-counter" id="imgCounter"></div>
+    </div>
+  </div>
   <button class="btn btn-generate" id="generateBtn">Gerar Story 9:16</button>
   <img class="preview" id="preview">
   <button class="btn btn-download" id="downloadBtn">Baixar Imagem</button>

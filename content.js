@@ -1,6 +1,7 @@
 function extractPost() {
   var title = '';
   var img = '';
+  var allImages = [];
   var link = window.location.href.split('#')[0];
   var description = '';
 
@@ -22,28 +23,38 @@ function extractPost() {
     if (titleTag) title = titleTag.textContent.trim();
   }
 
+  var seen = {};
+  function addImg(src) {
+    if (!src || src.startsWith('data:')) return;
+    if (!src.startsWith('http')) {
+      try { src = new URL(src, window.location.origin).href; } catch(e) { return; }
+    }
+    if (!seen[src]) { seen[src] = true; allImages.push(src); }
+  }
+
+  var contentImgs = document.querySelectorAll('article img, .post img, .content img, main img, .entry-content img, .media img');
+  contentImgs.forEach(function(el) {
+    var area = (el.naturalWidth || el.width) * (el.naturalHeight || el.height);
+    if (area > 10000) addImg(el.src);
+  });
+
+  var heroImg = document.querySelector('img[class*="hero"], img[class*="featured"], img[class*="main"], img[class*="cover"]');
+  if (heroImg) addImg(heroImg.src);
+
   var ogImg = document.querySelector('meta[property="og:image"]');
-  if (ogImg) img = ogImg.getAttribute('content');
+  if (ogImg) addImg(ogImg.getAttribute('content'));
 
-  if (!img) {
-    var twitterImg = document.querySelector('meta[name="twitter:image"]');
-    if (twitterImg) img = twitterImg.getAttribute('content');
-  }
+  var twitterImg = document.querySelector('meta[name="twitter:image"]');
+  if (twitterImg) addImg(twitterImg.getAttribute('content'));
 
-  if (!img) {
-    var mainImg = document.querySelector('article img, .post img, .content img, main img');
-    if (mainImg) img = mainImg.src;
-  }
+  var allPageImgs = document.querySelectorAll('img');
+  allPageImgs.forEach(function(el) {
+    var w = el.naturalWidth || el.width;
+    var h = el.naturalHeight || el.height;
+    if (w > 200 && h > 200) addImg(el.src);
+  });
 
-  if (!img) {
-    var largeImg = document.querySelector('img[width], img[class*="hero"], img[class*="featured"]');
-    if (largeImg) img = largeImg.src;
-  }
-
-  if (!img) {
-    var firstImg = document.querySelector('img');
-    if (firstImg && firstImg.naturalWidth > 200) img = firstImg.src;
-  }
+  if (allImages.length > 0) img = allImages[0];
 
   var ogDesc = document.querySelector('meta[property="og:description"]');
   if (ogDesc) description = ogDesc.getAttribute('content');
@@ -56,6 +67,7 @@ function extractPost() {
   return {
     title: title || document.title || 'Post',
     img: img || '',
+    allImages: allImages,
     link: link,
     description: description || ''
   };
