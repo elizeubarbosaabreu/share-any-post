@@ -184,12 +184,12 @@ function drawImageOnCanvas(ctx, img, w, h, pad) {
   var imgW = img.naturalWidth || img.width;
   var imgH = img.naturalHeight || img.height;
   var maxW = w * 0.9;
-  var maxH = h * 0.45;
+  var maxH = h * 0.4;
   var scale = Math.min(maxW / imgW, maxH / imgH, 1);
   imgW *= scale;
   imgH *= scale;
   var imgX = (w - imgW) / 2;
-  var imgY = pad + (maxH - imgH) / 2;
+  var imgY = h * 0.15;
 
   ctx.shadowColor = 'rgba(0,0,0,0.5)';
   ctx.shadowBlur = 30;
@@ -199,12 +199,12 @@ function drawImageOnCanvas(ctx, img, w, h, pad) {
   ctx.fill();
   ctx.shadowColor = 'transparent';
   ctx.drawImage(img, imgX, imgY, imgW, imgH);
-  return { w: imgW, h: imgH };
+  return { w: imgW, h: imgH, y: imgY };
 }
 
 function drawTitle(ctx, post, w, h, pad, imgDims) {
-  var imgH = imgDims ? imgDims.h : h * 0.45;
-  var textY = pad + imgH + 60;
+  var imgBottom = imgDims ? (imgDims.y + imgDims.h) : h * 0.55;
+  var textY = imgBottom + 60;
 
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 48px Arial, sans-serif';
