@@ -237,11 +237,6 @@ function drawButtonSpace(ctx, post, w, h, pad) {
   ctx.lineWidth = 2;
   roundRect(ctx, boxX, boxY, boxW, boxH, 20);
   ctx.stroke();
-
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.font = '28px Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Toque para acessar o link', w / 2, boxY + boxH / 2 + 8);
 }
 
 function finishStory(preview, generateBtn) {
