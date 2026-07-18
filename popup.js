@@ -2,6 +2,13 @@ var currentPost = null;
 var generatedText = '';
 var allImages = [];
 var imgIndex = 0;
+var selectedRatio = '9:16';
+
+var RATIOS = {
+  '9:16': { w: 1080, h: 1920 },
+  '4:5':  { w: 1080, h: 1350 },
+  '1:1':  { w: 1080, h: 1080 },
+};
 
 function showStatus(msg, isError) {
   var el = document.getElementById('status');
@@ -125,9 +132,10 @@ function doGenerate() {
   showStatus('Gerando story...');
 
   try {
-    var storyWidth = 1080;
-    var storyHeight = 1920;
-    var padding = 60;
+    var dims = RATIOS[selectedRatio];
+    var storyWidth = dims.w;
+    var storyHeight = dims.h;
+    var padding = Math.round(storyWidth * 0.055);
 
     canvas.width = storyWidth;
     canvas.height = storyHeight;
@@ -148,7 +156,6 @@ function doGenerate() {
         try {
           var imgDims = drawImageOnCanvas(ctx, img, storyWidth, storyHeight, padding);
           drawTitle(ctx, currentPost, storyWidth, storyHeight, padding, imgDims);
-          drawQR(ctx, currentPost, storyWidth, storyHeight, padding);
           drawButtonSpace(ctx, currentPost, storyWidth, storyHeight, padding);
           finishStory(preview, generateBtn);
         } catch (e) {
@@ -159,7 +166,6 @@ function doGenerate() {
       img.onerror = function() {
         try {
           drawTitle(ctx, currentPost, storyWidth, storyHeight, padding);
-          drawQR(ctx, currentPost, storyWidth, storyHeight, padding);
           drawButtonSpace(ctx, currentPost, storyWidth, storyHeight, padding);
           finishStory(preview, generateBtn);
         } catch (e) {
@@ -170,7 +176,6 @@ function doGenerate() {
       img.src = imgSrc;
     } else {
       drawTitle(ctx, currentPost, storyWidth, storyHeight, padding);
-      drawQR(ctx, currentPost, storyWidth, storyHeight, padding);
       drawButtonSpace(ctx, currentPost, storyWidth, storyHeight, padding);
       finishStory(preview, generateBtn);
     }
@@ -190,11 +195,12 @@ function drawImageOnCanvas(ctx, img, w, h, pad) {
   imgH *= scale;
   var imgX = (w - imgW) / 2;
   var imgY = h * 0.15;
+  var radius = Math.round(w * 0.02);
 
   ctx.shadowColor = 'rgba(0,0,0,0.5)';
-  ctx.shadowBlur = 30;
-  ctx.shadowOffsetY = 10;
-  roundRect(ctx, imgX - 10, imgY - 10, imgW + 20, imgH + 20, 20);
+  ctx.shadowBlur = Math.round(w * 0.028);
+  ctx.shadowOffsetY = Math.round(h * 0.005);
+  roundRect(ctx, imgX - 10, imgY - 10, imgW + 20, imgH + 20, radius + 10);
   ctx.fillStyle = '#ffffff';
   ctx.fill();
   ctx.shadowColor = 'transparent';
@@ -204,52 +210,12 @@ function drawImageOnCanvas(ctx, img, w, h, pad) {
 
 function drawTitle(ctx, post, w, h, pad, imgDims) {
   var imgBottom = imgDims ? (imgDims.y + imgDims.h) : h * 0.55;
-  var textY = imgBottom + 60;
+  var textY = imgBottom + Math.round(h * 0.03);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 48px Arial, sans-serif';
+  ctx.font = 'bold ' + Math.round(w * 0.044) + 'px Arial, sans-serif';
   ctx.textAlign = 'center';
-  wrapText(ctx, post.title || 'Post', w / 2, textY, w - pad * 2, 58);
-}
-
-function drawQR(ctx, post, w, h, pad) {
-  var qr = QRCode.create(0, 'M');
-  qr.addData(post.link);
-  qr.make();
-  var mc = qr.getModuleCount();
-  var cs = Math.floor(220 / mc);
-  var size = mc * cs + 20;
-
-  var qrCanvas = document.createElement('canvas');
-  qrCanvas.width = size;
-  qrCanvas.height = size;
-  var qrCtx = qrCanvas.getContext('2d');
-  qrCtx.fillStyle = '#ffffff';
-  qrCtx.fillRect(0, 0, size, size);
-  qrCtx.fillStyle = '#1a1a2e';
-  for (var r = 0; r < mc; r++) {
-    for (var c = 0; c < mc; c++) {
-      if (qr.isDark(r, c)) {
-        qrCtx.fillRect(c * cs + 10, r * cs + 10, cs, cs);
-      }
-    }
-  }
-
-  var qrX = (w - size) / 2;
-  var qrY = h - size - pad - 320;
-
-  ctx.shadowColor = 'rgba(0,0,0,0.4)';
-  ctx.shadowBlur = 20;
-  roundRect(ctx, qrX - 15, qrY - 15, size + 30, size + 30, 16);
-  ctx.fillStyle = '#ffffff';
-  ctx.fill();
-  ctx.shadowColor = 'transparent';
-  ctx.drawImage(qrCanvas, qrX, qrY, size, size);
-
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.font = '32px Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Escaneie para acessar', w / 2, qrY + size + 45);
+  wrapText(ctx, post.title || 'Post', w / 2, textY, w - pad * 2, Math.round(w * 0.054));
 }
 
 function drawButtonSpace(ctx, post, w, h, pad) {
@@ -323,6 +289,15 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 document.getElementById('generateBtn').addEventListener('click', doGenerate);
+
+document.querySelectorAll('.btn-aspect').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.btn-aspect').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    selectedRatio = btn.getAttribute('data-ratio');
+  });
+});
+
 document.getElementById('downloadBtn').addEventListener('click', function() {
   var link = document.createElement('a');
   link.download = 'story-' + Date.now() + '.png';
