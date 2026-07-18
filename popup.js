@@ -210,7 +210,7 @@ function drawImageOnCanvas(ctx, img, w, h, pad) {
 
 function drawTitle(ctx, post, w, h, pad, imgDims) {
   var imgBottom = imgDims ? (imgDims.y + imgDims.h) : h * 0.55;
-  var textY = imgBottom + Math.round(h * 0.03);
+  var textY = imgBottom + Math.round(h * 0.12);
 
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold ' + Math.round(w * 0.044) + 'px Arial, sans-serif';
